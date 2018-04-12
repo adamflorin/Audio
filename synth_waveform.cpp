@@ -40,7 +40,7 @@ void AudioSynthWaveform::update(void)
 	int16_t *bp, *end;
 	int32_t val1, val2;
 	int16_t magnitude15;
-	uint32_t i, ph, gph, index, index2, scale;
+	uint32_t i, ph, gph, last_ph, index, index2, scale;
 	const uint32_t inc = phase_increment;
 	const uint32_t ginc = gen_phase_increment;
 
@@ -97,19 +97,6 @@ void AudioSynthWaveform::update(void)
 	case WAVEFORM_SQUARE:
 		magnitude15 = signed_saturate_rshift(magnitude, 16, 1);
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
-			if (ph & 0x80000000) {
-				*bp++ = -magnitude15;
-			} else {
-				*bp++ = magnitude15;
-			}
-			ph += inc;
-		}
-		break;
-
-	case WAVEFORM_SQUARE_HARD_SYNC:
-		magnitude15 = signed_saturate_rshift(magnitude, 16, 1);
-		uint32_t last_ph;
-		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
 			if (gph & 0x80000000) {
 				*bp++ = -magnitude15;
 			} else {
@@ -127,14 +114,24 @@ void AudioSynthWaveform::update(void)
 	case WAVEFORM_SAWTOOTH:
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
 			*bp++ = signed_multiply_32x16t(magnitude, ph);
+			last_ph = ph;
 			ph += inc;
+			gph += ginc;
+			if (ph < last_ph) {
+				gph = 0;
+			}
 		}
 		break;
 
 	case WAVEFORM_SAWTOOTH_REVERSE:
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
 			*bp++ = signed_multiply_32x16t(0xFFFFFFFFu - magnitude, ph);
+			last_ph = ph;
 			ph += inc;
+			gph += ginc;
+			if (ph < last_ph) {
+				gph = 0;
+			}
 		}
 		break;
 
