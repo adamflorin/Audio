@@ -46,12 +46,16 @@ extern const int16_t AudioWaveformSine[257];
 #define WAVEFORM_SAWTOOTH_REVERSE  6
 #define WAVEFORM_SAMPLE_HOLD       7
 #define WAVEFORM_TRIANGLE_VARIABLE 8
+#define WAVEFORM_SQUARE_HARD_SYNC 9
 
 class AudioSynthWaveform : public AudioStream
 {
 public:
 	AudioSynthWaveform(void) : AudioStream(0,NULL),
-		phase_accumulator(0), phase_increment(0), phase_offset(0),
+		this_freq(0), this_sync(0),
+		phase_accumulator(0), gen_phase_accumulator(0),
+		phase_increment(0), gen_phase_increment(0),
+		phase_offset(0), gen_phase_offset(0),
 		magnitude(0), pulse_width(0x40000000),
 		arbdata(NULL), sample(0), tone_type(WAVEFORM_SINE),
 		tone_offset(0) {
@@ -63,8 +67,19 @@ public:
 		} else if (freq > AUDIO_SAMPLE_RATE_EXACT / 2) {
 			freq = AUDIO_SAMPLE_RATE_EXACT / 2;
 		}
+		this_freq = freq;
 		phase_increment = freq * (4294967296.0 / AUDIO_SAMPLE_RATE_EXACT);
 		if (phase_increment > 0x7FFE0000u) phase_increment = 0x7FFE0000;
+	}
+	void sync(float sync) {
+		if (sync < 1.0) {
+			sync = 1.0;
+		} else if (sync > 4.0) {
+			sync = 4.0;
+		}
+		this_sync = sync;
+		gen_phase_increment = this_freq * this_sync * (4294967296.0 / AUDIO_SAMPLE_RATE_EXACT);
+		if (gen_phase_increment > 0x7FFE0000u) gen_phase_increment = 0x7FFE0000;
 	}
 	void phase(float angle) {
 		if (angle < 0.0) {
@@ -74,6 +89,7 @@ public:
 			if (angle >= 360.0) return;
 		}
 		phase_offset = angle * (4294967296.0 / 360.0);
+		gen_phase_offset = angle * this_sync * (4294967296.0 / 360.0);
 	}
 	void amplitude(float n) {	// 0 to 1.0
 		if (n < 0) {
@@ -115,9 +131,14 @@ public:
 	virtual void update(void);
 
 private:
+	float this_freq;
+	float this_sync;
 	uint32_t phase_accumulator;
+	uint32_t gen_phase_accumulator;
 	uint32_t phase_increment;
+	uint32_t gen_phase_increment;
 	uint32_t phase_offset;
+	uint32_t gen_phase_offset;
 	int32_t  magnitude;
 	uint32_t pulse_width;
 	const int16_t *arbdata;

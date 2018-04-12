@@ -40,17 +40,21 @@ void AudioSynthWaveform::update(void)
 	int16_t *bp, *end;
 	int32_t val1, val2;
 	int16_t magnitude15;
-	uint32_t i, ph, index, index2, scale;
+	uint32_t i, ph, gph, index, index2, scale;
 	const uint32_t inc = phase_increment;
+	const uint32_t ginc = gen_phase_increment;
 
 	ph = phase_accumulator + phase_offset;
+	gph = gen_phase_accumulator + gen_phase_offset;
 	if (magnitude == 0) {
 		phase_accumulator += inc * AUDIO_BLOCK_SAMPLES;
+		gen_phase_accumulator += ginc * AUDIO_BLOCK_SAMPLES;
 		return;
 	}
 	block = allocate();
 	if (!block) {
 		phase_accumulator += inc * AUDIO_BLOCK_SAMPLES;
+		gen_phase_accumulator += ginc * AUDIO_BLOCK_SAMPLES;
 		return;
 	}
 	bp = block->data;
@@ -99,6 +103,24 @@ void AudioSynthWaveform::update(void)
 				*bp++ = magnitude15;
 			}
 			ph += inc;
+		}
+		break;
+
+	case WAVEFORM_SQUARE_HARD_SYNC:
+		magnitude15 = signed_saturate_rshift(magnitude, 16, 1);
+		uint32_t last_ph;
+		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
+			if (gph & 0x80000000) {
+				*bp++ = -magnitude15;
+			} else {
+				*bp++ = magnitude15;
+			}
+			last_ph = ph;
+			ph += inc;
+			gph += ginc;
+			if (ph < last_ph) {
+				gph = 0;
+			}
 		}
 		break;
 
@@ -172,6 +194,7 @@ void AudioSynthWaveform::update(void)
 		break;
 	}
 	phase_accumulator = ph - phase_offset;
+	gen_phase_accumulator = gph - gen_phase_offset;
 
 	if (tone_offset) {
 		bp = block->data;
@@ -401,5 +424,3 @@ void AudioSynthWaveformModulated::update(void)
 	transmit(block, 0);
 	release(block);
 }
-
-
