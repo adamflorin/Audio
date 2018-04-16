@@ -113,7 +113,7 @@ void AudioSynthWaveform::update(void)
 
 	case WAVEFORM_SAWTOOTH:
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
-			*bp++ = signed_multiply_32x16t(magnitude, ph);
+			*bp++ = signed_multiply_32x16t(magnitude, gph);
 			last_ph = ph;
 			ph += inc;
 			gph += ginc;
@@ -125,7 +125,7 @@ void AudioSynthWaveform::update(void)
 
 	case WAVEFORM_SAWTOOTH_REVERSE:
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
-			*bp++ = signed_multiply_32x16t(0xFFFFFFFFu - magnitude, ph);
+			*bp++ = signed_multiply_32x16t(0xFFFFFFFFu - magnitude, gph);
 			last_ph = ph;
 			ph += inc;
 			gph += ginc;
