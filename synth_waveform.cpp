@@ -111,6 +111,21 @@ void AudioSynthWaveform::update(void)
 		}
 		break;
 
+	case WAVEFORM_SQUARETOOTH:
+		magnitude15 = signed_saturate_rshift(magnitude, 16, 1);
+		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
+			*bp++ =
+				((gph & 0x80000000) ? magnitude15 : -magnitude15) +
+				signed_multiply_32x16t(0xFFFFFFFFu - magnitude15, gph);
+			last_ph = ph;
+			ph += inc;
+			gph += ginc;
+			if (ph < last_ph) {
+				gph = 0;
+			}
+		}
+		break;
+
 	case WAVEFORM_SAWTOOTH:
 		for (i=0; i < AUDIO_BLOCK_SAMPLES; i++) {
 			*bp++ = signed_multiply_32x16t(magnitude, gph);
